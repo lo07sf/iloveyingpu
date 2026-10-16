@@ -1,0 +1,277 @@
+/* 我愛螢圃里 — 溫暖老城南風格 */
+
+/* ---------- 首次載入畫面（蓋章＋花瓣飄落，結束時淡出） ---------- */
+.splash {
+  position: fixed; inset: 0; z-index: 3000; overflow: hidden;
+  background: #f5eddc;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  transition: opacity .5s ease;
+}
+.splash[hidden] { display: none; }
+.splash.leaving { opacity: 0; pointer-events: none; }
+.splash-seal { position: relative; display: flex; align-items: center; justify-content: center; width: 150px; height: 150px; }
+.splash .seal { width: 104px; height: 104px; animation: splash-stamp .7s cubic-bezier(.2,.9,.3,1.3) both, splash-breathe 2.4s ease-in-out .9s infinite; }
+.splash .ink { position: absolute; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(rgba(163,65,43,.2), transparent 70%); animation: splash-ink 1.2s ease-out .15s both; }
+.splash-brand { font-family: "Noto Serif TC", serif; font-weight: 900; font-size: 24px; letter-spacing: .12em; color: #3b2a1e; opacity: 0; animation: splash-fade .5s ease-out .6s forwards; }
+.splash-msg { font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 14px; letter-spacing: .08em; color: #8a6a52; opacity: 0; animation: splash-fade .5s ease-out .9s forwards; }
+.splash .petal { position: absolute; top: -30px; width: 14px; height: 20px; background: #e8572f; opacity: 0;
+  border-radius: 70% 70% 50% 50% / 80% 80% 40% 40%; animation: splash-fall linear infinite; }
+/* 前三片用 fall-first：蓋完章（0.6 秒）就已在畫面上方飄，載入很快時也看得到；之後三片照常從畫面外落下 */
+.splash .petal:nth-of-type(1) { left: 18%; animation: splash-fall-first 5.5s linear .6s infinite; }
+.splash .petal:nth-of-type(2) { left: 64%; animation: splash-fall-first 6s linear .7s infinite; background: #f0763f; }
+.splash .petal:nth-of-type(3) { left: 40%; animation: splash-fall-first 5s linear .85s infinite; background: #d9472a; }
+.splash .petal:nth-of-type(4) { left: 84%; animation-duration: 6.5s; animation-delay: 1.2s; }
+.splash .petal:nth-of-type(5) { left: 8%; animation-duration: 7s; animation-delay: 1.6s; background: #f0763f; width: 12px; height: 17px; }
+.splash .petal:nth-of-type(6) { left: 54%; animation-duration: 6.2s; animation-delay: 2.1s; }
+@keyframes splash-stamp { 0% { transform: scale(1.9) rotate(-14deg); opacity: 0; } 70% { transform: scale(.92) rotate(0); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes splash-ink { 0% { transform: scale(.3); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.15); opacity: .35; } }
+@keyframes splash-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes splash-fade { to { opacity: 1; } }
+@keyframes splash-fall {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  8% { opacity: .85; }
+  50% { transform: translate(-22px, 50vh) rotate(200deg); }
+  100% { opacity: .85; transform: translate(12px, calc(100vh + 40px)) rotate(400deg); }
+}
+/* 第一波：從畫面上方 12% 處淡入開始飄（不用等從畫面外掉進來） */
+@keyframes splash-fall-first {
+  0% { opacity: 0; transform: translate(0, 12vh) rotate(0); }
+  6% { opacity: .85; }
+  50% { transform: translate(-22px, 55vh) rotate(200deg); }
+  100% { opacity: .85; transform: translate(12px, calc(100vh + 40px)) rotate(400deg); }
+}
+/* 載入畫面淡出時，底下的內容輕輕浮上來 */
+main.enter { animation: main-enter .5s ease-out both; }
+@keyframes main-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* 裝置開了「減少動態效果」：不播動畫，直接顯示靜止的印章與文字 */
+@media (prefers-reduced-motion: reduce) {
+  .splash .seal, .splash .ink, .splash-brand, .splash-msg { animation: none; opacity: 1; }
+  .splash .petal { display: none; }
+  main.enter { animation: none; }
+}
+:root {
+  --paper: #f5eddc;
+  --card: #fffaf0;
+  --ink: #3b2a1e;
+  --ink-soft: #8a6a52;
+  --brick: #a3412b;
+  --line: #b89c80;
+  --ok: #4f7a3a;
+  --serif: "Noto Serif TC", "Songti TC", serif;
+  --sans: "Noto Sans TC", system-ui, sans-serif;
+  --nav-h: 64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+
+/* ---------- 頁首 ---------- */
+.top {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 16px 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--ink);
+}
+.top h1 { font-family: var(--serif); font-weight: 900; font-size: 25px; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; }
+.top .logo { width: 36px; height: 36px; flex: none; }
+.today { font-family: var(--serif); color: var(--ink-soft); font-size: 14px; }
+
+main { max-width: 640px; margin: 0 auto; padding: 14px 16px 24px; }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  padding: 14px;
+}
+.hero { box-shadow: 4px 4px 0 var(--brick); padding: 18px; margin-bottom: 14px; }
+.label { font-family: var(--serif); color: var(--brick); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+.serif { font-family: var(--serif); }
+.muted { color: var(--ink-soft); }
+.big-time { font-family: var(--serif); font-size: 52px; font-weight: 900; line-height: 1.1; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.place { font-family: var(--serif); font-size: 19px; font-weight: 700; }
+.meta { color: var(--ink-soft); font-size: 13.5px; margin-top: 4px; }
+.meta b { color: var(--brick); }
+.upcoming { list-style: none; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 14px; }
+.upcoming li { display: flex; gap: 10px; padding: 2px 0; }
+.upcoming li b { font-variant-numeric: tabular-nums; min-width: 44px; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { min-height: 120px; }
+.tile .big { font-family: var(--serif); color: var(--brick); font-size: 34px; font-weight: 900; line-height: 1.15; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .big small { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--ink-soft); margin-left: 4px; }
+.tile .sub { color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; margin-top: 4px; }
+.tile-title { font-family: var(--serif); font-weight: 700; font-size: 15px; margin-top: 6px; line-height: 1.4; }
+/* 可點的首頁小卡（跳到交通頁） */
+.link-tile { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.link-tile:active { transform: translate(1px, 1px); box-shadow: none; }
+.link-tile:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.link-tile .label { display: flex; justify-content: space-between; align-items: baseline; }
+.link-tile .go { font-size: 18px; line-height: 1; color: var(--brick); }
+.tile-place { font-family: var(--serif); font-weight: 700; font-size: 14px; line-height: 1.4; margin-top: 2px; }
+.tile .sub b { color: var(--brick); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { border: 1px solid var(--brick); color: var(--brick); border-radius: 2px; font-size: 13px; padding: 1px 8px; background: transparent; }
+.chip.solid { background: var(--brick); color: var(--card); }
+.chip.ok { border-color: var(--ok); color: var(--ok); }
+
+/* ---------- 公佈欄（像里辦公室門口的告示板） ---------- */
+.board { margin-top: 14px; padding: 14px 16px; }
+.board-title { font-family: var(--serif); font-weight: 900; font-size: 17px; letter-spacing: .1em; padding-bottom: 6px; border-bottom: 1.5px solid var(--ink); }
+.board-title::before { content: "📌 "; letter-spacing: 0; }
+.news-list { list-style: none; }
+.news { padding: 9px 0; }
+.news + .news { border-top: 1px dashed var(--line); }
+.news-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.news-meta .chip { font-size: 11.5px; padding: 0 6px; }
+.news.pinned { background: rgba(163, 65, 43, .06); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+.news-title { font-family: var(--serif); font-weight: 700; font-size: 15px; line-height: 1.45; margin-top: 3px; }
+.news-title a { text-decoration: none; }
+.news-title a:active { color: var(--brick); }
+.news-sum { color: var(--ink-soft); font-size: 12.5px; margin-top: 2px; line-height: 1.5; }
+.more { width: 100%; margin-top: 6px; padding: 7px; background: none; border: 1.5px dashed var(--line); border-radius: 4px; color: var(--brick); font-family: var(--serif); font-weight: 700; cursor: pointer; }
+
+/* ---------- 區塊與清單 ---------- */
+.section-title { font-family: var(--serif); font-size: 19px; font-weight: 900; margin: 22px 0 8px; padding-left: 10px; border-left: 4px solid var(--brick); }
+.section-head { display: flex; align-items: center; justify-content: space-between; }
+.section-head .section-title { margin-bottom: 8px; }
+.hint { color: var(--ink-soft); font-size: 13px; margin-bottom: 8px; }
+.refresh { background: var(--card); border: 1.5px solid var(--ink); border-radius: 4px; padding: 4px 12px; font-size: 13px; cursor: pointer; margin-top: 14px; }
+.refresh:active { transform: translate(1px, 1px); }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 12px; align-items: flex-start; }
+.row + .row { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 8px; }
+.row .when { font-family: var(--serif); font-weight: 900; font-size: 18px; min-width: 56px; font-variant-numeric: tabular-nums; }
+.row .main { flex: 1; min-width: 0; }
+.row .title { font-family: var(--serif); font-weight: 700; }
+.row .desc { color: var(--ink-soft); font-size: 13px; }
+.row.past { opacity: .45; }
+.row .count { text-align: right; font-family: var(--serif); font-weight: 900; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.row .count small { display: block; font-family: var(--sans); font-weight: 500; font-size: 11.5px; color: var(--ink-soft); }
+.count.zero { color: var(--brick); }
+.row .count { min-width: 48px; }
+
+/* 可排序的欄位標題（YouBike） */
+.sort-head { align-items: center; padding-bottom: 6px; border-bottom: 1.5px solid var(--ink); }
+.sort-head + .row { border-top: 0; margin-top: 0; }
+.sort-btn {
+  background: none; border: 0; padding: 4px 0; cursor: pointer;
+  font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--ink-soft);
+  white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+.sort-btn.main { text-align: left; }
+.sort-btn.count { text-align: right; line-height: 1.6; font-size: 13px; }
+.sort-btn.on { color: var(--brick); }
+.group-title { font-family: var(--serif); font-weight: 700; color: var(--brick); font-size: 14px; margin: 14px 0 6px; }
+
+details { margin-top: 6px; font-size: 13px; color: var(--ink-soft); }
+summary { cursor: pointer; color: var(--brick); }
+
+.tel {
+  display: inline-block; text-decoration: none; font-family: var(--serif); font-weight: 900;
+  border: 1.5px solid var(--brick); color: var(--brick); border-radius: 4px; padding: 4px 10px; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tel:active { background: var(--brick); color: var(--card); }
+
+.notice { background: var(--brick); color: var(--card); padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
+.notice code { background: rgba(255,255,255,.18); padding: 0 4px; border-radius: 2px; }
+
+/* ---------- 地圖 ---------- */
+#map { height: calc(100vh - 230px); min-height: 340px; border: 1.5px solid var(--ink); border-radius: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+/* 地圖類別篩選：按下＝顯示，未按＝隱藏 */
+.filter-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: var(--card); border: 1.5px solid var(--ink); border-radius: 99px;
+  padding: 4px 9px; font-size: 13px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-btn .n { font-weight: 400; color: var(--ink-soft); margin-left: 3px; font-size: 12px; }
+.filter-btn[aria-pressed="false"] { background: transparent; border-style: dashed; border-color: var(--line); color: var(--ink-soft); font-weight: 400; }
+.filter-btn[aria-pressed="false"] .dot { opacity: .3; }
+.filter-btn:active { transform: translate(1px, 1px); }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; border: 1.5px solid var(--card); box-shadow: 0 0 0 1px var(--ink); }
+.dot-garbage { background: #a3412b; }
+.dot-bike { background: #d98e04; }
+.dot-park { background: #2f5d8a; }
+.dot-work { background: #3b2a1e; }
+.leaflet-popup-content { font-family: var(--sans); color: var(--ink); }
+
+/* YouBike／停車場數字徽章 */
+.badge-icon { background: none; border: 0; }
+.map-badge {
+  position: absolute; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+  background: var(--card); border: 2px solid; border-radius: 99px; padding: 1px 7px 1px 5px;
+  font-family: var(--serif); font-weight: 900; font-size: 13px; line-height: 1.35; color: var(--ink);
+  box-shadow: 0 1px 3px rgba(59, 42, 30, .35); cursor: pointer;
+}
+.map-badge .k { font-size: 12px; }
+.map-badge .num { font-variant-numeric: tabular-nums; }
+.map-badge.bike { border-color: #d98e04; }
+.map-badge.park { border-color: #2f5d8a; }
+.map-badge.park .k { color: #2f5d8a; font-family: var(--sans); font-weight: 900; }
+.map-badge.zero .num { color: var(--brick); }
+.map-badge.nodata { opacity: .55; }
+.map-badge.stale { border-style: dashed; }
+.map-badge.stale .num { color: var(--ink-soft); }
+
+/* 資料過時（後端 stale）：提示改磚紅、數字變灰 */
+.hint.stale-note { color: var(--brick); font-weight: 700; }
+.card.is-stale .count, .big.is-stale { color: var(--ink-soft) !important; }
+
+/* 垃圾車「停靠中」圖示（依時刻表推算） */
+.truck-icon { background: none; border: 0; }
+.truck-pin {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  background: var(--card); border: 2.5px solid var(--brick);
+  animation: truck-pulse 1.6s ease-out infinite;
+}
+@keyframes truck-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(163, 65, 43, .55); }
+  70% { box-shadow: 0 0 0 14px rgba(163, 65, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(163, 65, 43, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .truck-pin { animation: none; } }
+.pop-status { font-weight: 700; font-size: 12.5px; }
+.pop-status.here, .pop-status.soon { color: var(--brick); }
+.pop-status.past { color: var(--ink-soft); }
+
+/* ---------- 頁尾 ---------- */
+.sources { margin-top: 32px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--ink-soft); font-size: 12px; }
+.sources p + p { margin-top: 4px; }
+
+/* ---------- 底部導覽 ---------- */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--ink);
+  display: flex; justify-content: space-around; align-items: center;
+}
+.nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none; color: #d9c6ad; font-family: var(--serif); font-size: 12px; }
+.nav a i { font-style: normal; font-size: 20px; line-height: 1; }
+.nav a.active { color: #fff; font-weight: 700; }
+
+@media (min-width: 560px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+  .tile { min-height: 132px; }
+}

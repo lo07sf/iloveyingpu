@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3b2a1e">
+<title>我愛螢圃里</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 首次載入畫面：資料 0.3 秒內沒到才出現；蓋章＋花瓣飄落，資料到了淡出 -->
+  <div id="splash" class="splash" hidden aria-hidden="true">
+    <i class="petal"></i><i class="petal"></i><i class="petal"></i><i class="petal"></i><i class="petal"></i><i class="petal"></i>
+    <div class="splash-seal"><div class="ink"></div><img class="seal" src="logo.svg" alt=""></div>
+    <div class="splash-brand">我愛螢圃里</div>
+    <div class="splash-msg">木棉花開中</div>
+  </div>
+
+  <header class="top">
+    <h1><img class="logo" src="logo.svg" alt="">我愛螢圃里</h1>
+    <span class="today" id="today"></span>
+  </header>
+
+  <main>
+    <div class="notice" id="notice" hidden></div>
+
+    <!-- 首頁 -->
+    <section class="view" id="view-home">
+      <div class="grid">
+        <article class="card tile link-tile" id="home-garbage" data-tab="garbage" role="link" tabindex="0" aria-label="查看垃圾車與資源回收"><div class="sub">載入中…</div></article>
+        <article class="card tile link-tile" id="home-bike" data-tab="transport" data-go="sec-bike" role="link" tabindex="0" aria-label="查看 YouBike 各站"></article>
+        <article class="card tile link-tile" id="home-park" data-tab="transport" data-go="sec-park" role="link" tabindex="0" aria-label="查看停車場剩餘車位"></article>
+        <article class="card tile link-tile" id="home-work" data-tab="transport" data-go="sec-work" role="link" tabindex="0" aria-label="查看周邊施工"></article>
+      </div>
+      <article class="card board" id="home-news"></article>
+    </section>
+
+    <!-- 垃圾回收 -->
+    <section class="view" id="view-garbage" hidden>
+      <h2 class="section-title">垃圾車停靠點</h2>
+      <p class="hint" id="garbage-hint"></p>
+      <div id="garbage-list"></div>
+      <h2 class="section-title">資源回收分類</h2>
+      <p class="hint">分類好的回收物排錯天也可以交給回收人員，清潔隊不應拒收。</p>
+      <div id="recycle-list"></div>
+    </section>
+
+    <!-- 交通 -->
+    <section class="view" id="view-transport" hidden>
+      <div class="section-head">
+        <h2 class="section-title" id="sec-bike">YouBike</h2>
+        <button class="refresh" data-refresh>重新整理</button>
+      </div>
+      <p class="hint" id="bike-updated"></p>
+      <div id="bike-list"></div>
+      <h2 class="section-title" id="sec-park">停車場剩餘車位</h2>
+      <p class="hint" id="park-updated"></p>
+      <div id="park-list"></div>
+      <h2 class="section-title" id="sec-work">周邊施工</h2>
+      <p class="hint">里內與里界外 500m 內今天施工中的案件</p>
+      <div id="work-list"></div>
+    </section>
+
+    <!-- 通訊錄 -->
+    <section class="view" id="view-contacts" hidden>
+      <h2 class="section-title">通訊錄</h2>
+      <div id="contact-list"></div>
+    </section>
+
+    <!-- 地圖 -->
+    <section class="view" id="view-map" hidden>
+      <div class="legend" id="map-filter" role="group" aria-label="地圖顯示類別">
+        <button class="filter-btn" data-layer="garbage" aria-pressed="true"><i class="dot dot-garbage"></i>垃圾車<span class="n"></span></button>
+        <button class="filter-btn" data-layer="bike" aria-pressed="true"><i class="dot dot-bike"></i>YouBike<span class="n"></span></button>
+        <button class="filter-btn" data-layer="park" aria-pressed="true"><i class="dot dot-park"></i>停車場<span class="n"></span></button>
+        <button class="filter-btn" data-layer="work" aria-pressed="true"><i class="dot dot-work"></i>施工<span class="n"></span></button>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <footer class="sources">
+      <p>資料來源：臺北市政府環境保護局、臺北市政府工務局、臺北市政府交通局、內政部國土測繪中心、臺北市中正區公所、臺北市政府警察局、臺北市政府消防局。依政府資料開放授權條款第 1 版使用。</p>
+      <p>地圖 © OpenStreetMap contributors</p>
+    </footer>
+  </main>
+
+  <nav class="nav">
+    <a href="#home" data-tab="home"><i>🏠</i>首頁</a>
+    <a href="#garbage" data-tab="garbage"><i>🚛</i>垃圾回收</a>
+    <a href="#transport" data-tab="transport"><i>🚲</i>交通</a>
+    <a href="#map" data-tab="map"><i>🗺️</i>地圖</a>
+    <a href="#contacts" data-tab="contacts"><i>📒</i>通訊錄</a>
+  </nav>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
