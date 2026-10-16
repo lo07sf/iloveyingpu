@@ -322,6 +322,13 @@
     renderLive();
   }
 
+  // ---------- 公共廁所（只在地圖上顯示） ----------
+  // 環保局分類改成住戶看得懂的說法
+  const TOILET_CATEGORY = { 綜合零售賣場: '超商・賣場', 連鎖餐飲店: '餐廳', 機關: '公有公廁', 交通: '捷運・車站', 文化育樂場所: '藝文場館' };
+  const toiletCategory = (c) => TOILET_CATEGORY[c] || c;
+  const toiletExtras = (t) => [t.accessible > 0 && '♿ 無障礙', t.family > 0 && '👶 親子'].filter(Boolean).join('・');
+  const navUrl = (p) => `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+
   // ---------- 公佈欄（螢圃里公布欄、區公所 RSS、自己發的公告） ----------
   const NEWS_SHOW = 5;
   let newsExpanded = false;
@@ -390,11 +397,20 @@
 
   // 使用者選擇顯示哪些類別，存在瀏覽器；預設全部顯示
   const MAP_FILTER_KEY = 'ily.mapLayers';
-  const LAYER_NAMES = ['garbage', 'bike', 'park', 'work'];
+  const LAYER_NAMES = ['garbage', 'bike', 'park', 'work', 'toilet'];
+  // 舊版存的選擇裡沒有這些類別；之後新增的類別預設顯示，不會因為使用者以前存過選擇就看不到
+  const LAYERS_BEFORE_TOILET = ['garbage', 'bike', 'park', 'work'];
   const shownLayers = (() => {
     try {
       const saved = JSON.parse(localStorage.getItem(MAP_FILTER_KEY));
-      if (Array.isArray(saved)) return new Set(saved.filter((n) => LAYER_NAMES.includes(n)));
+      if (Array.isArray(saved)) {
+        const added = LAYER_NAMES.filter((n) => !LAYERS_BEFORE_TOILET.includes(n));
+        return new Set([...saved.filter((n) => LAYER_NAMES.includes(n)), ...added]);
+      }
+      if (saved && Array.isArray(saved.shown) && Array.isArray(saved.known)) {
+        const added = LAYER_NAMES.filter((n) => !saved.known.includes(n));
+        return new Set([...saved.shown.filter((n) => LAYER_NAMES.includes(n)), ...added]);
+      }
     } catch (err) { /* 無痕模式或停用儲存時用預設 */ }
     return new Set(LAYER_NAMES);
   })();
@@ -415,7 +431,7 @@
     const name = e.target.closest('[data-layer]')?.dataset.layer;
     if (!name) return;
     if (shownLayers.has(name)) shownLayers.delete(name); else shownLayers.add(name);
-    try { localStorage.setItem(MAP_FILTER_KEY, JSON.stringify([...shownLayers])); } catch (err) { /* 存不了就只在這次有效 */ }
+    try { localStorage.setItem(MAP_FILTER_KEY, JSON.stringify({ shown: [...shownLayers], known: LAYER_NAMES })); } catch (err) { /* 存不了就只在這次有效 */ }
     syncMapFilter();
   });
   syncMapFilter(); // 地圖還沒開之前，先讓按鈕顯示上次的選擇
@@ -439,8 +455,15 @@
 
     layers = Object.fromEntries(LAYER_NAMES.map((n) => [n, L.layerGroup()]));
     updateGarbageMarkers();
-    (state.sheets?.construction || []).forEach((w) => pin(w.lat, w.lng, '#3b2a1e',
-      `<b>${esc(w.title)}</b><br>${esc(w.start_time)} ～ ${esc(w.end_time)}`).addTo(layers.work));
+    (state.sheets?.construction || []).forEach((w) => L.marker([w.lat, w.lng], {
+      icon: L.divIcon({ className: 'badge-icon', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12],
+        html: '<div class="map-badge work"><span class="k">🚧</span></div>' }),
+    }).bindPopup(`<b>${esc(w.title)}</b><br>${esc(w.start_time)} ～ ${esc(w.end_time)}`).addTo(layers.work));
+    (state.sheets?.toilets || []).forEach((t) => L.marker([t.lat, t.lng], {
+      icon: L.divIcon({ className: 'badge-icon', iconSize: [0, 0], iconAnchor: [0, 0], popupAnchor: [0, -12],
+        html: '<div class="map-badge toilet"><span class="k">🚻</span></div>' }),
+    }).bindPopup(`<b>${esc(t.name)}</b><br>${esc(toiletCategory(t.category))}・${t.seats} 座${toiletExtras(t) ? `・${toiletExtras(t)}` : ''}`
+      + `<br><a href="${navUrl(t)}" target="_blank" rel="noopener">開啟導航 ›</a>`).addTo(layers.toilet));
     updateLiveMarkers();
   }
 

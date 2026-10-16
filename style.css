@@ -76,10 +76,15 @@ a { color: inherit; }
 button { font: inherit; color: inherit; }
 
 /* ---------- 頁首 ---------- */
+/* 標題列：往下捲動時固定在畫面最上方（z-index 高於地圖的縮放按鈕） */
 .top {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  background: var(--paper);
   max-width: 640px;
   margin: 0 auto;
-  padding: 18px 16px 10px;
+  padding: calc(18px + env(safe-area-inset-top)) 16px 10px;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -147,7 +152,7 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 24px; }
 .more { width: 100%; margin-top: 6px; padding: 7px; background: none; border: 1.5px dashed var(--line); border-radius: 4px; color: var(--brick); font-family: var(--serif); font-weight: 700; cursor: pointer; }
 
 /* ---------- 區塊與清單 ---------- */
-.section-title { font-family: var(--serif); font-size: 19px; font-weight: 900; margin: 22px 0 8px; padding-left: 10px; border-left: 4px solid var(--brick); }
+.section-title { font-family: var(--serif); font-size: 19px; font-weight: 900; margin: 22px 0 8px; padding-left: 10px; border-left: 4px solid var(--brick); scroll-margin-top: 80px; /* 從首頁小卡跳過來時，不要被固定的標題列蓋住 */ }
 .section-head { display: flex; align-items: center; justify-content: space-between; }
 .section-head .section-title { margin-bottom: 8px; }
 .hint { color: var(--ink-soft); font-size: 13px; margin-bottom: 8px; }
@@ -206,12 +211,21 @@ summary { cursor: pointer; color: var(--brick); }
 .filter-btn .n { font-weight: 400; color: var(--ink-soft); margin-left: 3px; font-size: 12px; }
 .filter-btn[aria-pressed="false"] { background: transparent; border-style: dashed; border-color: var(--line); color: var(--ink-soft); font-weight: 400; }
 .filter-btn[aria-pressed="false"] .dot { opacity: .3; }
+/* 篩選按鈕上的圖示（與地圖標記相同） */
+.filter-btn .fi { font-size: 15px; line-height: 1; margin-right: 4px; }
+.filter-btn .fi-p { font-family: var(--sans); font-weight: 900; font-size: 13px; color: #2f5d8a; border: 1.5px solid #2f5d8a; border-radius: 4px; padding: 0 3px; }
+.filter-btn[aria-pressed="false"] .fi { filter: grayscale(1); opacity: .4; }
+.map-badge.work { border-color: #c96a1b; padding: 1px 5px; }
+.map-badge.work .k { font-size: 13px; }
 .filter-btn:active { transform: translate(1px, 1px); }
 .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; border: 1.5px solid var(--card); box-shadow: 0 0 0 1px var(--ink); }
 .dot-garbage { background: #a3412b; }
 .dot-bike { background: #d98e04; }
 .dot-park { background: #2f5d8a; }
 .dot-work { background: #3b2a1e; }
+.dot-toilet { background: #4f7a6e; }
+.map-badge.toilet { border-color: #4f7a6e; padding: 1px 5px; }
+.map-badge.toilet .k { font-size: 13px; }
 .leaflet-popup-content { font-family: var(--sans); color: var(--ink); }
 
 /* YouBike／停車場數字徽章 */
