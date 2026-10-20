@@ -80,6 +80,20 @@
     const [first] = next.list;
     const today = isoDay(new Date());
     const collectsToday = villageStops().some((s) => daysOf(s.collect_days).includes(today));
+    const nextDay = next.offset === 1 ? '明天' : `週${WEEK[next.day]}`;
+
+    // 今天停收（臺北市週三、週日）：蓋一個「休」字，下面告訴他下一班
+    if (!collectsToday) {
+      el.innerHTML = `
+        <div class="label">今天垃圾車<span class="go">›</span></div>
+        <div class="rest-row">
+          <span class="rest-stamp" aria-hidden="true">休</span>
+          <span class="tile-place">週${WEEK[today]}停收</span>
+        </div>
+        <div class="sub">下一班 <b>${nextDay} ${esc(first.arrive_time)}</b><br>${esc(first.stop_name)}</div>`;
+      return;
+    }
+
     let when;
     if (next.offset === 0) {
       const wait = toMin(first.arrive_time) - nowMin();
@@ -87,7 +101,7 @@
         ? `還有 <b>${wait >= 60 ? `${Math.floor(wait / 60)} 小時 ${wait % 60} 分` : `${wait} 分鐘`}</b>`
         : `<b>車子現在在這裡</b>`;
     } else {
-      when = `${collectsToday ? '今天已收完' : `今天週${WEEK[today]}停收`}・<b>${next.offset === 1 ? '明天' : `週${WEEK[next.day]}`}</b>`;
+      when = `今天已收完・<b>${nextDay}</b>`;
     }
 
     el.innerHTML = `
@@ -120,7 +134,8 @@
               ${s.note ? `<div class="desc">${esc(s.note)}</div>` : ''}</div>
           </div>`;
         }).join('');
-      return `<div class="group-title">${esc(v)}</div><article class="card">${rows}</article>`;
+      // 停收日整張清單反灰
+      return `<div class="group-title">${esc(v)}</div><article class="card${collectsToday ? '' : ' rest-day'}">${rows}</article>`;
     }).join('') || '<p class="muted">目前沒有垃圾車資料</p>';
   }
 
@@ -395,46 +410,30 @@
     radius: 7, color: '#fffaf0', weight: 2, fillColor: color, fillOpacity: 1,
   }).bindPopup(html);
 
-  // 使用者選擇顯示哪些類別，存在瀏覽器；預設全部顯示
-  const MAP_FILTER_KEY = 'ily.mapLayers';
+  // 一次只顯示一種類別；預設都不顯示，免得地圖太雜。再按一次目前的類別＝收起來
   const LAYER_NAMES = ['garbage', 'bike', 'park', 'work', 'toilet'];
-  // 舊版存的選擇裡沒有這些類別；之後新增的類別預設顯示，不會因為使用者以前存過選擇就看不到
-  const LAYERS_BEFORE_TOILET = ['garbage', 'bike', 'park', 'work'];
-  const shownLayers = (() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(MAP_FILTER_KEY));
-      if (Array.isArray(saved)) {
-        const added = LAYER_NAMES.filter((n) => !LAYERS_BEFORE_TOILET.includes(n));
-        return new Set([...saved.filter((n) => LAYER_NAMES.includes(n)), ...added]);
-      }
-      if (saved && Array.isArray(saved.shown) && Array.isArray(saved.known)) {
-        const added = LAYER_NAMES.filter((n) => !saved.known.includes(n));
-        return new Set([...saved.shown.filter((n) => LAYER_NAMES.includes(n)), ...added]);
-      }
-    } catch (err) { /* 無痕模式或停用儲存時用預設 */ }
-    return new Set(LAYER_NAMES);
-  })();
+  let shownLayer = null;
 
   function syncMapFilter() {
     document.querySelectorAll('#map-filter [data-layer]').forEach((btn) => {
       const name = btn.dataset.layer;
-      const on = shownLayers.has(name);
+      const on = shownLayer === name;
       btn.setAttribute('aria-pressed', String(on));
       if (layers) {
         btn.querySelector('.n').textContent = layers[name].getLayers().length;
         if (on) layers[name].addTo(map); else layers[name].remove();
       }
     });
+    $('#map-hint').hidden = shownLayer !== null;
   }
 
   $('#map-filter').addEventListener('click', (e) => {
     const name = e.target.closest('[data-layer]')?.dataset.layer;
     if (!name) return;
-    if (shownLayers.has(name)) shownLayers.delete(name); else shownLayers.add(name);
-    try { localStorage.setItem(MAP_FILTER_KEY, JSON.stringify({ shown: [...shownLayers], known: LAYER_NAMES })); } catch (err) { /* 存不了就只在這次有效 */ }
+    shownLayer = shownLayer === name ? null : name;
     syncMapFilter();
   });
-  syncMapFilter(); // 地圖還沒開之前，先讓按鈕顯示上次的選擇
+  syncMapFilter();
 
   function initMap() {
     if (map || !window.L) return;
@@ -566,6 +565,9 @@
     tile.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
 
+  // 標題「我愛螢圃里」＝回首頁；已在首頁時網址不變、不會觸發切換，直接捲回最上面
+  $('.home-link').addEventListener('click', () => { if (location.hash === '#home') window.scrollTo(0, 0); });
+
   // ---------- 啟動 ----------
   function renderSheets() {
     renderHomeGarbage();
@@ -597,7 +599,7 @@
 
   async function start() {
     const d = new Date();
-    $('#today').textContent = `${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
+    $('#today').textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
     window.addEventListener('hashchange', showTab);
     showTab();
 

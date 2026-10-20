@@ -22,7 +22,7 @@
   </div>
 
   <header class="top">
-    <h1><img class="logo" src="logo.svg" alt="">我愛螢圃里</h1>
+    <h1><a class="home-link" href="#home" title="回首頁"><img class="logo" src="logo.svg" alt="">我愛螢圃里</a></h1>
     <span class="today" id="today"></span>
   </header>
 
@@ -75,12 +75,13 @@
     <!-- 地圖 -->
     <section class="view" id="view-map" hidden>
       <div class="legend" id="map-filter" role="group" aria-label="地圖顯示類別">
-        <button class="filter-btn" data-layer="garbage" aria-pressed="true"><span class="fi">🚛</span>垃圾車<span class="n"></span></button>
-        <button class="filter-btn" data-layer="bike" aria-pressed="true"><span class="fi">🚲</span>YouBike<span class="n"></span></button>
-        <button class="filter-btn" data-layer="park" aria-pressed="true"><span class="fi fi-p">P</span>停車場<span class="n"></span></button>
-        <button class="filter-btn" data-layer="work" aria-pressed="true"><span class="fi">🚧</span>施工<span class="n"></span></button>
-        <button class="filter-btn" data-layer="toilet" aria-pressed="true"><span class="fi">🚻</span>廁所<span class="n"></span></button>
+        <button class="filter-btn" data-layer="garbage" aria-pressed="false"><span class="fi">🚛</span>垃圾車<span class="n"></span></button>
+        <button class="filter-btn" data-layer="bike" aria-pressed="false"><span class="fi">🚲</span>YouBike<span class="n"></span></button>
+        <button class="filter-btn" data-layer="park" aria-pressed="false"><span class="fi fi-p">P</span>停車場<span class="n"></span></button>
+        <button class="filter-btn" data-layer="work" aria-pressed="false"><span class="fi">🚧</span>施工<span class="n"></span></button>
+        <button class="filter-btn" data-layer="toilet" aria-pressed="false"><span class="fi">🚻</span>廁所<span class="n"></span></button>
       </div>
+      <p class="hint" id="map-hint">點上方的類別，地圖上就會出現；一次顯示一種。</p>
       <div id="map"></div>
     </section>
 
@@ -91,7 +92,6 @@
   </main>
 
   <nav class="nav">
-    <a href="#home" data-tab="home"><i>🏠</i>首頁</a>
     <a href="#garbage" data-tab="garbage"><i>🚛</i>垃圾回收</a>
     <a href="#transport" data-tab="transport"><i>🚲</i>交通</a>
     <a href="#map" data-tab="map"><i>🗺️</i>地圖</a>
