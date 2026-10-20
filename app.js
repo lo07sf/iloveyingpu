@@ -171,8 +171,8 @@
       <article class="card">
         <div class="chips" style="margin-top:0"><span class="chip${w.in_village ? ' solid' : ''}">${distText(w)}</span><span class="chip">${esc(w.status)}</span></div>
         <div class="title serif" style="margin-top:6px;font-weight:700">${esc(w.title)}</div>
-        <div class="desc muted" style="font-size:13px">${esc(w.start_time)} ～ ${esc(w.end_time)}</div>
-        ${w.work_hours ? `<div class="desc muted" style="font-size:13px">施工時段：${esc(w.work_hours)}</div>` : ''}
+        <div class="desc muted">${esc(w.start_time)} ～ ${esc(w.end_time)}</div>
+        ${w.work_hours ? `<div class="desc muted">施工時段：${esc(w.work_hours)}</div>` : ''}
         <details><summary>施工路段</summary>${esc(w.location_desc)}<br>施工單位：${esc(w.contractor)}</details>
       </article>`).join('')}</div>` : '<p class="muted">今天里內與周邊沒有施工。</p>';
   }
@@ -367,7 +367,7 @@
       </li>`;
     };
     el.innerHTML = `
-      <div class="board-title">公佈欄${items[0]?.stale ? '<span class="muted" style="font-size:12px;font-weight:400">（暫時無法更新，顯示上次內容）</span>' : ''}</div>
+      <div class="board-title">公佈欄${items[0]?.stale ? '<span class="muted" style="font-size:calc(12px * var(--fs));font-weight:400">（暫時無法更新，顯示上次內容）</span>' : ''}</div>
       <ul class="news-list">${shown.map(row).join('')}</ul>
       ${items.length > NEWS_SHOW ? `<button class="more" data-news-more>${newsExpanded ? '收合' : `看更多（共 ${items.length} 則）`}</button>` : ''}`;
   }
@@ -388,6 +388,62 @@
   }
 
   // ---------- 通訊錄 ----------
+  // ---------- 我需要：需求型店家 ----------
+  // 日常型（吃喝、超商）之後放首頁依時段輪替，不列在這裡；其餘分類依「臨時最常需要」排序、改成住戶的說法
+  const DAILY_CATEGORIES = ['餐廳小吃', '早餐店', '咖啡店', '飲料店', '超商', '食品雜貨烘焙'];
+  const NEED_GROUPS = [
+    { icon: '🔧', title: '修繕・水電五金', cats: ['五金水電建材'] },
+    { icon: '🛵', title: '機車・汽車', cats: ['汽機車與維修'] },
+    { icon: '👕', title: '洗衣・改衣服', cats: ['洗衣修改'] },
+    { icon: '💊', title: '藥局・藥妝', cats: ['藥局藥妝'] },
+    { icon: '✂️', title: '剪髮・美容', cats: ['美髮美容'] },
+    { icon: '🐾', title: '寵物', cats: ['寵物'] },
+    { icon: '🛋️', title: '二手家具・家電', cats: ['二手家具家電'] },
+    { icon: '🍳', title: '餐飲設備', cats: ['餐飲設備'] },
+    { icon: '🏦', title: '銀行・郵局', cats: ['銀行郵局'] },
+    { icon: '🏃', title: '運動', cats: ['運動'] },
+    { icon: '🛍️', title: '其他店家', cats: ['其他零售'] },
+  ];
+
+  // 下拉選單選的分類（'' = 全部），存在瀏覽器，下次打開沿用
+  const NEED_KEY = 'ily.needGroup';
+  let needSelected = (() => { try { return localStorage.getItem(NEED_KEY) || ''; } catch (err) { return ''; } })();
+
+  function renderNeeds() {
+    const stores = (state.sheets?.stores || []).filter((s) => !DAILY_CATEGORIES.includes(s.category));
+    const known = NEED_GROUPS.flatMap((g) => g.cats);
+    // 之後試算表新增了沒對應到的分類，自動歸到「其他店家」
+    const groups = NEED_GROUPS.map((g) => ({
+      ...g,
+      items: stores.filter((s) => g.cats.includes(s.category) || (g.title === '其他店家' && !known.includes(s.category))),
+    })).filter((g) => g.items.length);
+    if (needSelected && !groups.some((g) => g.title === needSelected)) needSelected = '';
+
+    $('#need-select').innerHTML = `<option value="">全部分類（${stores.length}）</option>`
+      + groups.map((g) => `<option value="${esc(g.title)}"${g.title === needSelected ? ' selected' : ''}>${g.icon} ${esc(g.title)}（${g.items.length}）</option>`).join('');
+
+    const shown = needSelected ? groups.filter((g) => g.title === needSelected) : groups;
+    $('#need-list').innerHTML = shown.map((g) => `
+      <div class="group-title">${g.icon} ${esc(g.title)}</div>
+      <article class="card">${[...g.items].sort((a, b) => (b.in_village - a.in_village) || String(a.address).localeCompare(String(b.address), 'zh-Hant')).map((s) => {
+        // note 裡的「登記名稱：…」是給你核對用的，不顯示給住戶
+        const note = String(s.note || '').startsWith('登記名稱') ? '' : s.note;
+        const extra = [s.address, s.opening_hours, note].filter(Boolean).map(esc).join('・');
+        const tel = s.phone ? `<a class="tel" href="tel:${esc(String(s.phone).replace(/-/g, '').replace('#', ','))}">${esc(s.phone)}</a>` : '';
+        const nav = s.map_url ? `<a class="nav-btn" href="${esc(s.map_url)}" target="_blank" rel="noopener">地圖 ›</a>` : '';
+        return `<div class="row">
+          <div class="main"><div class="title">${esc(s.name)}</div>${extra ? `<div class="desc">${extra}</div>` : ''}</div>
+          <div class="row-actions">${tel}${nav}</div>
+        </div>`;
+      }).join('')}</article>`).join('') || '<p class="muted">目前沒有店家資料</p>';
+  }
+
+  $('#need-select').addEventListener('change', (e) => {
+    needSelected = e.target.value;
+    try { localStorage.setItem(NEED_KEY, needSelected); } catch (err) { /* 存不了就只在這次有效 */ }
+    renderNeeds();
+  });
+
   function renderContacts() {
     const rows = [...(state.sheets?.contacts || [])].sort((a, b) => a.sort_order - b.sort_order);
     const groups = [...new Set(rows.map((c) => c.category))];
@@ -539,7 +595,25 @@
   }
 
   // ---------- 頁籤 ----------
-  const TABS = ['home', 'garbage', 'transport', 'map', 'contacts'];
+  const TABS = ['home', 'garbage', 'transport', 'map', 'needs', 'contacts'];
+  // ---------- 長輩模式（字體放大） ----------
+  // html.large 讓 CSS 的 --fs 變 1.25；選擇存在瀏覽器，index.html 的 <head> 會在畫面出來前先套用
+  const FONT_KEY = 'ily.fontLarge';
+  const fsBtn = $('#fs-toggle');
+  function syncFontButton() {
+    const large = document.documentElement.classList.contains('large');
+    fsBtn.setAttribute('aria-pressed', String(large));
+    fsBtn.textContent = large ? '一般' : '大字';
+    fsBtn.title = large ? '改回一般字體' : '把字放大';
+  }
+  fsBtn.addEventListener('click', () => {
+    const large = document.documentElement.classList.toggle('large');
+    try { localStorage.setItem(FONT_KEY, large ? '1' : '0'); } catch (err) { /* 存不了就只在這次有效 */ }
+    syncFontButton();
+    map?.invalidateSize(); // 版面高度變了，地圖重新計算大小
+  });
+  syncFontButton();
+
   function showTab() {
     const tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
     TABS.forEach((t) => { $(`#view-${t}`).hidden = t !== tab; });
@@ -575,6 +649,7 @@
     renderRecycleView();
     renderWork();
     renderContacts();
+    renderNeeds();
   }
 
   // ---------- 首次載入畫面 ----------
@@ -597,9 +672,23 @@
     }, wait);
   }
 
+  // 頁尾投稿連結：config.js 有填網址的才顯示
+  function setupContribute() {
+    let any = false;
+    [['#form-store', CFG.FORM_STORE_URL], ['#form-feedback', CFG.FORM_FEEDBACK_URL]].forEach(([sel, url]) => {
+      if (!url) return;
+      $(sel).href = url;
+      $(sel).hidden = false;
+      any = true;
+    });
+    $('#contribute').hidden = !any;
+  }
+
   async function start() {
+    setupContribute();
     const d = new Date();
-    $('#today').textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
+    // 年份包在 .yr 裡，最窄的手機（≤340px）會隱藏年份
+    $('#today').innerHTML = `<span class="yr">${d.getFullYear()}/</span>${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
     window.addEventListener('hashchange', showTab);
     showTab();
 
