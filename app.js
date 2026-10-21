@@ -390,7 +390,7 @@
   // ---------- 通訊錄 ----------
   // ---------- 我需要：需求型店家 ----------
   // 日常型（吃喝、超商）之後放首頁依時段輪替，不列在這裡；其餘分類依「臨時最常需要」排序、改成住戶的說法
-  const DAILY_CATEGORIES = ['餐廳小吃', '早餐店', '咖啡店', '飲料店', '超商', '食品雜貨烘焙'];
+  const DAILY_CATEGORIES = ['餐廳小吃', '早餐店', '咖啡店', '超商'];
   const NEED_GROUPS = [
     { icon: '🔧', title: '修繕・水電五金', cats: ['五金水電建材'] },
     { icon: '🛵', title: '機車・汽車', cats: ['汽機車與維修'] },
@@ -402,8 +402,109 @@
     { icon: '🍳', title: '餐飲設備', cats: ['餐飲設備'] },
     { icon: '🏦', title: '銀行・郵局', cats: ['銀行郵局'] },
     { icon: '🏃', title: '運動', cats: ['運動'] },
+    { icon: '🍞', title: '食品雜貨・烘焙', cats: ['食品雜貨烘焙'] },
+    { icon: '🧋', title: '飲料店', cats: ['飲料店'] },
     { icon: '🛍️', title: '其他店家', cats: ['其他零售'] },
   ];
+
+  // 店家的撥號、地圖按鈕（我需要、首頁推薦共用）
+  function storeTel(s) {
+    // phone 填「沒查到」之類的文字時不顯示撥號按鈕（要有數字才算電話）
+    if (!/\d{6,}/.test(String(s.phone || '').replace(/\D/g, ''))) return '';
+    // 有兩支電話（用 ; 分隔）時，撥號按鈕撥第一支
+    const firstTel = String(s.phone).split(/[;；、]/)[0];
+    return `<a class="tel" href="tel:${esc(firstTel.replace(/[\s-]/g, '').replace('#', ','))}">${esc(firstTel.trim())}</a>`;
+  }
+  const storeMap = (s) => (s.map_url ? `<a class="nav-btn" href="${esc(s.map_url)}" target="_blank" rel="noopener">地圖 ›</a>` : '');
+  const storeActions = (s) => storeTel(s) + storeMap(s);
+
+  // ---------- 首頁：依時段推薦日常型店家 ----------
+  // 只在這三個時段出現，只挑「現在有開」的店，隨機 EAT_PICK 家；超商不推薦
+  const MEALS = [
+    { key: 'breakfast', title: '早餐吃什麼', icon: '🍳', from: '07:00', to: '10:00', cats: ['早餐店', '咖啡店'] },
+    { key: 'lunch', title: '午餐吃什麼', icon: '🍜', from: '11:00', to: '13:00', cats: ['餐廳小吃'] },
+    { key: 'dinner', title: '晚餐吃什麼', icon: '🍲', from: '18:00', to: '20:00', cats: ['餐廳小吃'] },
+  ];
+  const EAT_PICK = 4;
+  const DAY_CODES = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+  // opening_hours（格式見 schema.md）→ [{ days: [1..7], spans: [[開, 關], …] }]，時間用分鐘；關門早於開門＝營業到隔天
+  function parseHours(text) {
+    const rules = [];
+    for (const part of String(text || '').split(';').map((p) => p.trim()).filter(Boolean)) {
+      const m = part.match(/^([A-Za-z,\-]+)\s+(.+)$/);
+      if (!m) return null;
+      const days = [];
+      for (const seg of m[1].split(',')) {
+        const [a, b] = seg.split('-').map((d) => DAY_CODES.indexOf(d) + 1);
+        if (!a || (seg.includes('-') && !b)) return null;
+        for (let d = a; d <= (b || a); d++) days.push(d);
+      }
+      const spans = m[2].split(',').map((t) => t.trim().match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/));
+      if (spans.some((t) => !t)) return null;
+      rules.push({ days, spans: spans.map((t) => [toMin(t[1]), toMin(t[2])]) });
+    }
+    return rules.length ? rules : null;
+  }
+
+  // 現在有開 → 回傳今天打烊時間（分鐘，可能 > 1440 表示隔天），沒開 → null
+  function openUntil(rules, day, min) {
+    const yesterday = day === 1 ? 7 : day - 1;
+    for (const r of rules) {
+      for (const [open, close] of r.spans) {
+        const overnight = close <= open;
+        if (r.days.includes(day) && min >= open && (overnight || min < close)) return overnight ? close + 1440 : close;
+        if (overnight && r.days.includes(yesterday) && min < close) return close;
+      }
+    }
+    return null;
+  }
+
+  const minText = (m) => `${pad2(Math.floor(m / 60) % 24)}:${pad2(m % 60)}`;
+  let eatPicks = { meal: '', ids: [] };
+
+  function renderHomeEat(reshuffle = false) {
+    const el = $('#home-eat');
+    const now = new Date();
+    const nm = nowMin();
+    const meal = MEALS.find((m) => nm >= toMin(m.from) && nm < toMin(m.to));
+    const open = !meal ? [] : (state.sheets?.stores || [])
+      .filter((s) => meal.cats.includes(s.category))
+      .map((s) => ({ s, rules: parseHours(s.opening_hours) }))
+      .filter(({ rules }) => rules)
+      .map(({ s, rules }) => ({ s, until: openUntil(rules, isoDay(now), nm) }))
+      .filter(({ until }) => until !== null);
+    if (!open.length) { el.hidden = true; eatPicks = { meal: '', ids: [] }; return; }
+
+    // 同一個時段內保留上次挑的店（每 30 秒重算時不會一直換），按「換一批」或換時段才重抽
+    const byId = Object.fromEntries(open.map((o) => [o.s.store_id, o]));
+    let ids = eatPicks.meal === meal.key ? eatPicks.ids.filter((id) => byId[id]) : [];
+    if (reshuffle || ids.length < Math.min(EAT_PICK, open.length)) {
+      const pool = open.map((o) => o.s.store_id).sort(() => Math.random() - 0.5);
+      const unseen = pool.filter((id) => !ids.includes(id));
+      // 換一批：盡量換成這次沒出現的店；補位：保留原本的，再補新的
+      ids = (reshuffle ? [...unseen, ...ids] : [...ids, ...unseen]).slice(0, EAT_PICK);
+    }
+    eatPicks = { meal: meal.key, ids };
+
+    el.innerHTML = `
+      <div class="eat-head"><div class="board-title eat-title">${meal.icon} ${meal.title}</div>
+        ${open.length > EAT_PICK ? '<button class="eat-more" data-eat-shuffle aria-label="換一批" title="換一批">↻</button>' : ''}</div>
+      <div class="eat-list">${ids.map((id) => byId[id]).sort((a, b) => a.until - b.until).map(({ s, until }) => {
+        // 早打烊的排上面；第一列：店名＋電話，第二列：營業時間、地址＋地圖
+        const closing = until - nm <= 30;
+        const extra = [`<span class="${closing ? 'eat-closing' : ''}">${closing ? '快打烊・' : ''}營業到 ${minText(until)}</span>`, s.address ? esc(s.address.replace(/^臺北市中正區(螢圃里)?/, '')) : '']
+          .filter(Boolean).join('・');
+        return `<div class="eat-row">
+          <div class="title">${esc(s.name)}</div><div class="eat-act">${storeTel(s)}</div>
+          <div class="desc">${extra}</div><div class="eat-act">${storeMap(s)}</div>
+        </div>`;
+      }).join('')}</div>
+      <p class="eat-note">※ 營業時間以店家實際公告為準</p>`;
+    el.hidden = false;
+  }
+
+  $('#home-eat').addEventListener('click', (e) => { if (e.target.closest('[data-eat-shuffle]')) renderHomeEat(true); });
 
   // 下拉選單選的分類（'' = 全部），存在瀏覽器，下次打開沿用
   const NEED_KEY = 'ily.needGroup';
@@ -429,11 +530,9 @@
         // note 裡的「登記名稱：…」是給你核對用的，不顯示給住戶
         const note = String(s.note || '').startsWith('登記名稱') ? '' : s.note;
         const extra = [s.address, s.opening_hours, note].filter(Boolean).map(esc).join('・');
-        const tel = s.phone ? `<a class="tel" href="tel:${esc(String(s.phone).replace(/-/g, '').replace('#', ','))}">${esc(s.phone)}</a>` : '';
-        const nav = s.map_url ? `<a class="nav-btn" href="${esc(s.map_url)}" target="_blank" rel="noopener">地圖 ›</a>` : '';
         return `<div class="row">
           <div class="main"><div class="title">${esc(s.name)}</div>${extra ? `<div class="desc">${extra}</div>` : ''}</div>
-          <div class="row-actions">${tel}${nav}</div>
+          <div class="row-actions">${storeActions(s)}</div>
         </div>`;
       }).join('')}</article>`).join('') || '<p class="muted">目前沒有店家資料</p>';
   }
@@ -642,9 +741,91 @@
   // 標題「我愛螢圃里」＝回首頁；已在首頁時網址不變、不會觸發切換，直接捲回最上面
   $('.home-link').addEventListener('click', () => { if (location.hash === '#home') window.scrollTo(0, 0); });
 
+  // ---------- 停水停電通知 ----------
+  // 只看里內（in_village）、還沒結束的；載入完成後跳出視窗，要手動關閉。
+  // 勾「今天不再跳出」就記住今天看過哪幾則，今天之內不再跳；有新的一則還是會跳。首頁提示條一直都在，點了可再打開。
+  const OUTAGE_SKIP_KEY = 'ily.outageSkip';
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const localStamp = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  // '2026-10-22 22:00' → { md: '10/22（四）', time: '22:00', day: '2026-10-22' }
+  const parseStamp = (s) => {
+    const m = String(s ?? '').match(/(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return { md: `${+m[2]}/${+m[3]}（${WEEK[d.getDay()]}）`, time: `${pad2(m[4])}:${m[5]}`, day: `${m[1]}-${pad2(m[2])}-${pad2(m[3])}` };
+  };
+
+  function activeOutages() {
+    const now = localStamp(new Date());
+    return (state.sheets?.outage || [])
+      .filter((o) => o.in_village === true && String(o.end_time) >= now)
+      .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+  }
+
+  function outageWhen(o) {
+    const s = parseStamp(o.start_time);
+    const e = parseStamp(o.end_time);
+    if (!s || !e) return esc(o.time_desc || `${o.start_time} – ${o.end_time}`);
+    // 時段不拆行；跨日時「到 10/23（五）06:00」另起一段
+    return e.day === s.day
+      ? `${s.md}<span class="nw">${s.time} – ${e.time}</span>`
+      : `${s.md}<span class="nw">${s.time}</span> – ${e.md}<span class="nw">${e.time}</span>`;
+  }
+  const isOngoing = (o) => String(o.start_time) <= localStamp(new Date());
+
+  function renderOutages() {
+    const list = activeOutages();
+    const bar = $('#outage-bar');
+    if (!list.length) { bar.hidden = true; return list; }
+    const types = [...new Set(list.map((o) => o.type))].join('、');
+    bar.textContent = `⚠️ 里內近期有${types}（${list.length} 則），點我看時間 ›`;
+    bar.hidden = false;
+    $('#outage-list').innerHTML = list.map((o) => `
+      <div class="outage-item">
+        <div><span class="outage-type ${o.source === 'water' ? 'water' : ''}">${esc(o.type)}</span>${isOngoing(o) ? '<span class="outage-now">進行中</span>' : ''}</div>
+        <div class="outage-when">${outageWhen(o)}</div>
+        ${o.title ? `<div class="outage-what">${esc(o.title)}${o.time_desc && o.source === 'water' ? `・${esc(o.time_desc)}` : ''}</div>` : ''}
+        ${o.area_desc ? `<div class="outage-area">範圍：${esc(o.area_desc)}</div>` : ''}
+        ${o.official_url ? `<a class="outage-link" href="${esc(o.official_url)}" target="_blank" rel="noopener">看官方公告 ›</a>` : ''}
+      </div>`).join('');
+    return list;
+  }
+
+  function openOutageModal() {
+    $('#outage-skip').checked = false;
+    $('#outage-modal').hidden = false;
+    document.body.classList.add('modal-open');
+    $('#outage-ok').focus();
+  }
+
+  function closeOutageModal() {
+    if ($('#outage-skip').checked) {
+      const ids = activeOutages().map((o) => o.outage_id);
+      try { localStorage.setItem(OUTAGE_SKIP_KEY, JSON.stringify({ day: localStamp(new Date()).slice(0, 10), ids })); } catch (err) { /* 存不了就只在這次有效 */ }
+    }
+    $('#outage-modal').hidden = true;
+    document.body.classList.remove('modal-open');
+  }
+
+  // 載入完成時呼叫：有今天還沒選「不再跳出」的停水停電就跳出視窗
+  function maybeShowOutages() {
+    const list = renderOutages();
+    if (!list.length) return;
+    let skip = null;
+    try { skip = JSON.parse(localStorage.getItem(OUTAGE_SKIP_KEY)); } catch (err) { /* 讀不到就當沒選過 */ }
+    const today = localStamp(new Date()).slice(0, 10);
+    const skipped = skip && skip.day === today ? skip.ids || [] : [];
+    if (list.some((o) => !skipped.includes(o.outage_id))) openOutageModal();
+  }
+
+  $('#outage-ok').addEventListener('click', closeOutageModal);
+  $('#outage-bar').addEventListener('click', openOutageModal);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#outage-modal').hidden) closeOutageModal(); });
+
   // ---------- 啟動 ----------
   function renderSheets() {
     renderHomeGarbage();
+    renderHomeEat();
     renderGarbageView();
     renderRecycleView();
     renderWork();
@@ -661,15 +842,16 @@
   let splashShownAt = 0;
   const splashTimer = setTimeout(() => { splash.hidden = false; splashShownAt = Date.now(); }, SPLASH_DELAY);
 
+  // 回傳 Promise：載入畫面完全消失後才 resolve（停水停電視窗等它收掉再跳）
   function hideSplash() {
     clearTimeout(splashTimer);
-    if (!splashShownAt) { splash.remove(); return; }
+    if (!splashShownAt) { splash.remove(); return Promise.resolve(); }
     const wait = Math.max(0, SPLASH_MIN - (Date.now() - splashShownAt));
-    setTimeout(() => {
+    return new Promise((resolve) => setTimeout(() => {
       splash.classList.add('leaving');
       document.querySelector('main').classList.add('enter');
-      setTimeout(() => splash.remove(), 550);
-    }, wait);
+      setTimeout(() => { splash.remove(); resolve(); }, 550);
+    }, wait));
   }
 
   // 頁尾投稿連結：config.js 有填網址的才顯示
@@ -709,7 +891,7 @@
     } catch (err) {
       showNotice('資料載入失敗，請稍後重新整理。');
     }
-    hideSplash(); // 成功或失敗都要收掉載入畫面
+    hideSplash().then(maybeShowOutages); // 成功或失敗都要收掉載入畫面
 
     // 頁面開著時定期更新即時資料；切到背景就暫停，回來時立刻補抓
     const every = CFG.LIVE_REFRESH_MS || 60000;
@@ -718,7 +900,8 @@
       if (!document.hidden && Date.now() - state.liveFetchedAt > every) loadLive();
     });
     // 倒數分鐘每 30 秒重算（不重抓資料）
-    setInterval(() => { if (!document.hidden) { renderHomeGarbage(); updateGarbageMarkers(); } }, 30000);
+    // 推薦店家也一起重算：時段開始／結束、店家打烊時自動更新
+    setInterval(() => { if (!document.hidden) { renderHomeGarbage(); updateGarbageMarkers(); renderHomeEat(); } }, 30000);
     document.querySelectorAll('[data-refresh]').forEach((b) => b.addEventListener('click', loadLive));
   }
 

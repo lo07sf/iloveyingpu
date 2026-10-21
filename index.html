@@ -53,12 +53,16 @@
 
     <!-- 首頁 -->
     <section class="view" id="view-home">
+      <!-- 有里內停水停電時才出現；點了再打開通知視窗 -->
+      <button class="outage-bar" id="outage-bar" hidden></button>
       <div class="grid">
         <article class="card tile link-tile" id="home-garbage" data-tab="garbage" role="link" tabindex="0" aria-label="查看垃圾車與資源回收"><div class="sub">載入中…</div></article>
         <article class="card tile link-tile" id="home-bike" data-tab="transport" data-go="sec-bike" role="link" tabindex="0" aria-label="查看 YouBike 各站"></article>
         <article class="card tile link-tile" id="home-park" data-tab="transport" data-go="sec-park" role="link" tabindex="0" aria-label="查看停車場剩餘車位"></article>
         <article class="card tile link-tile" id="home-work" data-tab="transport" data-go="sec-work" role="link" tabindex="0" aria-label="查看周邊施工"></article>
       </div>
+      <!-- 依時段推薦日常型店家：早餐 07–10、午餐 11–13、晚餐 18–20，其他時間不顯示 -->
+      <article class="card board eat" id="home-eat" hidden></article>
       <article class="card board" id="home-news"></article>
     </section>
 
@@ -129,6 +133,16 @@
       <p>地圖 © OpenStreetMap contributors</p>
     </footer>
   </main>
+
+  <!-- 停水停電通知：載入完成後，里內有停水停電才跳出，要按「我知道了」才會關 -->
+  <div class="modal-backdrop" id="outage-modal" hidden>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="outage-title" aria-describedby="outage-list">
+      <h2 class="modal-title" id="outage-title">⚠️ 停水停電通知</h2>
+      <div class="modal-body" id="outage-list"></div>
+      <label class="modal-skip"><input type="checkbox" id="outage-skip"> 今天不再跳出</label>
+      <button class="modal-ok" id="outage-ok">我知道了</button>
+    </div>
+  </div>
 
   <nav class="nav">
     <a href="#garbage" data-tab="garbage"><i>🚛</i>垃圾回收</a>

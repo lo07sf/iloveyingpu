@@ -178,6 +178,26 @@ main { max-width: 640px; margin: 0 auto; padding: 14px 16px 24px; }
 .board { margin-top: 14px; padding: 14px 16px; }
 .board-title { font-family: var(--serif); font-weight: 900; font-size: calc(17px * var(--fs)); letter-spacing: .1em; padding-bottom: 6px; border-bottom: 1.5px solid var(--ink); }
 .board-title::before { content: "📌 "; letter-spacing: 0; }
+/* 首頁推薦店家（沿用公佈欄的卡片樣式，標題前換成餐點圖示） */
+.eat[hidden] { display: none; }
+.eat-head { display: flex; align-items: flex-end; gap: 8px; border-bottom: 1.5px solid var(--ink); margin-bottom: 10px; }
+.eat-title { flex: 1; border-bottom: 0; }
+.eat-title::before { content: none; }
+.eat-more {
+  margin-bottom: 6px; width: calc(34px * var(--fs)); height: calc(34px * var(--fs)); padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); color: var(--brick); border: 1.5px solid var(--brick); border-radius: 4px;
+  font-weight: 700; font-size: calc(20px * var(--fs)); line-height: 1;
+}
+.eat-more:active { background: var(--brick); color: var(--card); }
+.eat-closing { color: var(--brick); font-weight: 700; }
+/* 兩列：店名＋電話／營業時間、地址＋地圖 */
+.eat-row { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 6px; align-items: center; }
+.eat-row + .eat-row { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }
+.eat-row .title { font-family: var(--serif); font-weight: 700; font-size: calc(18px * var(--fs)); line-height: 1.35; min-width: 0; }
+.eat-row .desc { color: var(--ink-soft); font-size: calc(13px * var(--fs)); min-width: 0; }
+.eat-act { justify-self: end; }
+.eat-note { margin-top: 10px; color: var(--ink-soft); font-size: calc(12px * var(--fs)); }
 .news-list { list-style: none; }
 .news { padding: 9px 0; }
 .news + .news { border-top: 1px dashed var(--line); }
@@ -259,6 +279,53 @@ summary { cursor: pointer; color: var(--brick); }
 
 .notice { background: var(--brick); color: var(--card); padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: calc(14px * var(--fs)); }
 .notice code { background: rgba(255,255,255,.18); padding: 0 4px; border-radius: 2px; }
+
+/* ---------- 停水停電通知 ---------- */
+/* 首頁上方的提示條（關掉視窗後還能再打開） */
+.outage-bar {
+  display: block; width: 100%; margin-bottom: 12px; padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--brick); color: var(--card); border: 0; border-radius: 4px;
+  font-family: var(--serif); font-weight: 700; font-size: calc(15px * var(--fs));
+}
+.outage-bar[hidden] { display: none; }
+/* 跳出視窗：蓋在整個頁面上（標題列、底部工具列、地圖之上） */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(59, 42, 30, .55);
+}
+.modal-backdrop[hidden] { display: none; }
+.modal {
+  width: 100%; max-width: 440px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+  display: flex; flex-direction: column;
+  background: var(--card); border: 1.5px solid var(--ink); border-radius: 4px; box-shadow: 4px 4px 0 var(--brick);
+  padding: 18px 16px 16px; animation: modal-in .25s ease-out;
+}
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+.modal-title { font-family: var(--serif); font-weight: 900; color: var(--brick); font-size: calc(21px * var(--fs)); margin-bottom: 10px; }
+.modal-body { overflow-y: auto; flex: 1 1 auto; margin: 0 -4px; padding: 0 4px; }
+.outage-item { padding: 10px 0; border-top: 1px dashed var(--line); }
+.outage-item:first-child { border-top: 0; padding-top: 0; }
+.outage-type {
+  display: inline-block; padding: 1px 8px; border-radius: 3px; margin-right: 6px; vertical-align: 2px;
+  font-family: var(--serif); font-weight: 700; font-size: calc(13px * var(--fs)); color: var(--card); background: var(--brick);
+}
+.outage-type.water { background: #3d6a8a; }
+.outage-when { margin-top: 4px; font-family: var(--serif); font-weight: 700; font-size: calc(18px * var(--fs)); }
+.outage-when .nw { white-space: nowrap; }
+.outage-now { font-family: var(--serif); font-weight: 700; color: var(--brick); font-size: calc(14px * var(--fs)); }
+.outage-what { margin-top: 4px; font-size: calc(14px * var(--fs)); }
+.outage-area { margin-top: 4px; color: var(--ink-soft); font-size: calc(13.5px * var(--fs)); }
+.outage-link { display: inline-block; margin-top: 6px; color: var(--brick); font-size: calc(14px * var(--fs)); }
+.modal-skip { display: flex; align-items: center; gap: 6px; margin-top: 12px; color: var(--ink-soft); font-size: calc(14px * var(--fs)); cursor: pointer; }
+.modal-skip input { width: 18px; height: 18px; accent-color: var(--brick); }
+.modal-ok {
+  margin-top: 10px; width: 100%; padding: 12px; cursor: pointer;
+  background: var(--brick); color: var(--card); border: 0; border-radius: 4px;
+  font-family: var(--serif); font-weight: 700; font-size: calc(17px * var(--fs));
+}
+.modal-ok:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+body.modal-open { overflow: hidden; }
 
 /* ---------- 地圖 ---------- */
 #map { height: calc(100vh - 230px); min-height: 340px; border: 1.5px solid var(--ink); border-radius: 4px; }
