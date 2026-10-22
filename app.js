@@ -35,6 +35,13 @@
   // '2026-10-15 13:31:52' 或 '2026-10-15 13:31' → '13:31'
   const hhmm = (s) => (String(s ?? '').match(/(\d{1,2}:\d{2})(?::\d{2})?$/) || [])[1] || '';
 
+  // 撥號按鈕：寬度固定，超過 12 個字元（例 02-2341-6721#517）就依長度把字縮小
+  const TEL_FIT = 12;
+  const telLink = (text, href) => {
+    const scale = text.length > TEL_FIT ? (TEL_FIT / text.length).toFixed(3) : '';
+    return `<a class="tel" href="tel:${esc(href)}"${scale ? ` style="--tel-scale:${scale}"` : ''}>${esc(text)}</a>`;
+  };
+
   async function fetchJson(url) {
     const res = await fetch(url);
     const data = await res.json();
@@ -410,14 +417,13 @@
   // 店家的撥號、地圖按鈕（我需要、首頁推薦共用）
   function storeTel(s) {
     // phone 填「沒查到」之類的文字時不顯示撥號按鈕（要有數字才算電話）
-    if (!/\d{6,}/.test(String(s.phone || '').replace(/\D/g, ''))) return '';
+    // 沒有電話也放一個同樣大小的按鈕（顯示「-」、不能按），讓每一列對齊
+    if (!/\d{6,}/.test(String(s.phone || '').replace(/\D/g, ''))) return '<span class="tel tel-none" aria-label="沒有電話">-</span>';
     // 有兩支電話（用 ; 分隔）時，撥號按鈕撥第一支
     const firstTel = String(s.phone).split(/[;；、]/)[0];
-    return `<a class="tel" href="tel:${esc(firstTel.replace(/[\s-]/g, '').replace('#', ','))}">${esc(firstTel.trim())}</a>`;
+    return telLink(firstTel.trim(), firstTel.replace(/[\s-]/g, '').replace('#', ','));
   }
   const storeMap = (s) => (s.map_url ? `<a class="nav-btn" href="${esc(s.map_url)}" target="_blank" rel="noopener">地圖 ›</a>` : '');
-  const storeActions = (s) => storeTel(s) + storeMap(s);
-
   // ---------- 首頁：依時段推薦日常型店家 ----------
   // 只在這三個時段出現，只挑「現在有開」的店，隨機 EAT_PICK 家；超商不推薦
   const MEALS = [
@@ -495,9 +501,9 @@
         const closing = until - nm <= 30;
         const extra = [`<span class="${closing ? 'eat-closing' : ''}">${closing ? '快打烊・' : ''}營業到 ${minText(until)}</span>`, s.address ? esc(s.address.replace(/^臺北市中正區(螢圃里)?/, '')) : '']
           .filter(Boolean).join('・');
-        return `<div class="eat-row">
-          <div class="title">${esc(s.name)}</div><div class="eat-act">${storeTel(s)}</div>
-          <div class="desc">${extra}</div><div class="eat-act">${storeMap(s)}</div>
+        return `<div class="store-row">
+          <div class="title">${esc(s.name)}</div><div class="store-act">${storeTel(s)}</div>
+          <div class="desc">${extra}</div><div class="store-act">${storeMap(s)}</div>
         </div>`;
       }).join('')}</div>
       <p class="eat-note">※ 營業時間以店家實際公告為準</p>`;
@@ -529,10 +535,17 @@
       <article class="card">${[...g.items].sort((a, b) => (b.in_village - a.in_village) || String(a.address).localeCompare(String(b.address), 'zh-Hant')).map((s) => {
         // note 裡的「登記名稱：…」是給你核對用的，不顯示給住戶
         const note = String(s.note || '').startsWith('登記名稱') ? '' : s.note;
-        const extra = [s.address, s.opening_hours, note].filter(Boolean).map(esc).join('・');
-        return `<div class="row">
-          <div class="main"><div class="title">${esc(s.name)}</div>${extra ? `<div class="desc">${extra}</div>` : ''}</div>
-          <div class="row-actions">${storeActions(s)}</div>
+        // 地址本身就是 Google 地圖連結（沒有地址就顯示「看地圖」）
+        const address = String(s.address || '').replace(/^臺北市中正區(螢圃里)?/, '');
+        const addrHtml = s.map_url
+          ? `<a class="addr-link" href="${esc(s.map_url)}" target="_blank" rel="noopener">📍${esc(address || '看地圖')}</a>`
+          : esc(address);
+        // 營業時間是給首頁推薦判斷用的程式格式，這裡不顯示
+        const extra = [addrHtml, note ? esc(note) : ''].filter(Boolean).join('・');
+        // 第一列：店名＋電話，第二列：地址（有備註時接在後面）
+        return `<div class="store-row">
+          <div class="title">${esc(s.name)}</div><div class="store-act">${storeTel(s)}</div>
+          ${extra ? `<div class="desc wide">${extra}</div>` : ''}
         </div>`;
       }).join('')}</article>`).join('') || '<p class="muted">目前沒有店家資料</p>';
   }
@@ -553,7 +566,7 @@
         const extra = [c.address, c.service_hours, c.note].filter(Boolean).map(esc).join('・');
         return `<div class="row">
           <div class="main"><div class="title">${esc(c.name)}</div>${extra ? `<div class="desc">${extra}</div>` : ''}</div>
-          <a class="tel" href="tel:${esc(telHref)}">${esc(c.phone)}</a>
+          ${telLink(String(c.phone), telHref)}
         </div>`;
       }).join('')}</article>`).join('') || '<p class="muted">目前沒有通訊錄資料</p>';
   }
